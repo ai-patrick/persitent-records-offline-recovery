@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Persistent Records and Offline Recovery</string>
+    <string name="lab_subtitle">Lab 08: Persistent Records, APIs and Offline Recovery</string>
+</resources>
