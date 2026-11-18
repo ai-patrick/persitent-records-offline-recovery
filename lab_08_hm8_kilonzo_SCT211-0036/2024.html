@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 08: Persistent Records, APIs & Offline Recovery — Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f8f7;--card:#fff;--ink:#1c2b29;--mute:#586967;--line:#cddad8;--acc:#0f766e;--accbg:#e3f2ef;--warn:#fff4dc;--warnl:#e0b252;--tip:#e8f1fb;--tipl:#7aa7d9;--code:#142120;--saved:#4CAF50;--pending:#FF9800;--acked:#2196F3;--failed:#F44336;--conflict:#9C27B0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:960px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:2rem;line-height:1.2;margin:.2em 0 .1em}
+h2{font-size:1.5rem;margin:2.4em 0 .6em;padding-bottom:.35em;border-bottom:2px solid var(--line)}
+h3{font-size:1.1rem;margin:1.8em 0 .4em}
+h4{font-size:1rem;margin:1.4em 0 .3em;color:var(--acc)}
+p{margin:.6em 0;max-width:72ch}
+.kicker{color:var(--acc);font-weight:600;font-size:.9rem}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin:16px 0 0;color:var(--mute);font-size:.92rem}
+.meta b{color:var(--ink);font-weight:600}
+.fill{border-bottom:1.5px dashed var(--acc);padding:0 4px;min-width:5em;display:inline-block;color:var(--acc)}
+.fill:focus{outline:2px solid var(--acc);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card b{display:block;margin-bottom:2px}.card span{color:var(--mute);font-size:.92rem}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.92rem;margin:14px 0}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--accbg);font-weight:600}tr:last-child td{border-bottom:0}
+td code,p code,li code{background:var(--accbg);padding:1px 5px;border-radius:5px;font-size:.88em}
+.res{cursor:pointer;text-align:center;width:64px;font-size:1.1rem;user-select:none}
+.ed{min-width:9em;color:var(--acc)}
+.note{border-left:4px solid;border-radius:8px;padding:10px 14px;margin:16px 0}
+.note.warn{background:var(--warn);border-color:var(--warnl)}.note.tip{background:var(--tip);border-color:var(--tipl)}
+.note.draft{background:var(--card);border:1px dashed var(--warnl);border-left:4px solid var(--warnl)}
+.note p{margin:.3em 0}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:.9rem}
+.chip.ok{background:var(--accbg);border-color:var(--acc)}.chip.bad{background:var(--warn);border-color:var(--warnl)}
+.arr{color:var(--mute)}
+.code{margin:14px 0;border-radius:12px;overflow:hidden;background:var(--code);color:#dbe8e6}
+.code figcaption{padding:8px 14px;font:500 .8rem ui-monospace,Menlo,Consolas,monospace;background:#0b1514;color:#9fb8b4}
+.code figcaption b{color:#6fd3c4;font-weight:500}
+.code pre{margin:0;padding:12px 0;overflow-x:auto;font:400 .82rem/1.55 ui-monospace,Menlo,Consolas,monospace;counter-reset:n}
+.l::before{counter-increment:n;content:counter(n);display:inline-block;width:2.4em;margin-right:1.1em;text-align:right;color:#5f7a77;user-select:none}
+.code i{font-style:normal}.c{color:#7f9a97;font-style:italic!important}.s{color:#e6c07b}.k{color:#7fd1c3}.a{color:#e5a3c5}.t{color:#8ab4f8}.n{color:#f0a77a}
+details{margin:14px 0;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+summary{cursor:pointer;padding:10px 14px;font-weight:600;color:var(--acc)}details .code{margin:0;border-radius:0 0 12px 12px}
+.tree{font:.85rem/1.6 ui-monospace,Menlo,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;white-space:pre;overflow-x:auto}
+.step{display:grid;grid-template-columns:44px 1fr;gap:4px 14px;margin:26px 0}
+.step .no{width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-weight:700;color:var(--mute)}
+.step h3{margin:6px 0 0}.step p,.step .phone{grid-column:2}
+.phone{display:grid;place-items:center;width:210px;height:420px;border:8px solid #2a2f33;border-radius:28px;background:var(--card);color:var(--mute);font-size:.85rem;text-align:center;padding:12px;cursor:pointer;overflow:hidden}
+.phone.over{outline:3px dashed var(--acc)}.phone input{display:none}.phone img{width:100%;height:100%;object-fit:contain}
+ul,ol{max-width:72ch}li{margin:.25em 0}
+@media print{@page{size:A4;margin:14mm}body{background:#fff;color:#000;font-size:11pt}main{padding:0;max-width:none}
+.hint{display:none}.code pre{white-space:pre-wrap;overflow:visible}.code,.card,.note,table,.step{break-inside:avoid}h2{break-after:avoid}}
+.phone{width:254px;height:466px;border:2px solid var(--line);border-radius:28px;padding:0;background:#161216}
+.phone img{object-fit:cover}.card .ic{font-size:1.4rem;display:block}
+.who{display:flex;flex-wrap:wrap;gap:8px 20px;color:var(--mute);margin:14px 0 0;font-size:.95rem}
+.sub{color:var(--mute);margin:.2em 0 0}
+@media print{.step{break-inside:avoid}.phone{border-color:#999}}
+
+.screenshot-zone{background:var(--card);border:2px dashed var(--acc);border-radius:12px;padding:24px;margin:16px 0;text-align:center;transition:background .2s,border-color .2s}
+.screenshot-zone.hover{background:var(--accbg);border-color:var(--acc)}
+.screenshot-zone input{display:none}
+.screenshot-zone label{cursor:pointer;display:inline-block;padding:12px 24px;background:var(--acc);color:#fff;border-radius:8px;font-weight:600;transition:background .2s}
+.screenshot-zone label:hover{background:#0d5d56}
+.screenshot-zone .preview{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:16px}
+.screenshot-zone .preview img{max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.screenshot-zone .placeholder{color:var(--mute);font-size:.95rem}
+.status-chip{display:inline-block;padding:4px 10px;border-radius:999px;font-size:.75rem;font-weight:600;color:#fff}
+.status-saved{background:var(--saved)}.status-pending{background:var(--pending)}.status-acked{background:var(--acked)}.status-failed{background:var(--failed)}.status-conflict{background:var(--conflict)}
+</style></head><body><main>
+<p class="kicker">MOBILE APPLICATION DEVELOPMENT &bull; LAB 08</p>
+<h1>Persistent Records, APIs & Offline Recovery</h1>
+<p class="sub">An Android (Kotlin/Java) walkthrough: Room database, sync state machine, idempotent retries, and conflict handling.</p>
+<div class="who"><span>&#128100; <b>Patrick Kilonzo Mbithi</b></span><span>&#127380; SCT211-0036/2024</span><span>&#127891; BSc Computer Science</span><span>&#128104;&#8205;&#127979; Dr. Lawrence Nderu</span></div>
+
+<h2>1 &middot; Lab Objective</h2>
+<p>Build a complete offline-first record-keeping app that demonstrates <b>local persistence</b>, <b>explicit sync states</b>, and <b>reliable server communication</b>. By the end of this lab the app can:</p>
+<div class="grid">
+<div class="card"><span class="ic">&#128204;</span><b>Persist locally</b><span>Room/SQLite survives process death and device reboot.</span></div>
+<div class="card"><span class="ic">&#128172;</span><b>Validate input</b><span>Field-level and form-level checks before any database write.</span></div>
+<div class="card"><span class="ic">&#8635;</span><b>Sync with state machine</b><span>SAVED → PENDING → ACKNOWLEDGED / FAILED / CONFLICT.</span></div>
+<div class="card"><span class="ic">&#9889;</span><b>Idempotent retry</b><span>Same <code>clientId</code> prevents duplicates on retry.</span></div>
+<div class="card"><span class="ic">&#128161;</span><b>Lost response handling</b><span>Timeout but server succeeded — detect via idempotency key.</span></div>
+<div class="card"><span class="ic">&#9888;</span><b>Conflict vs transient</b><span>Distinguish retry-safe errors from permanent conflicts.</span></div>
+</div>
+<table><tr><th>Component</th><th>Purpose in this app</th></tr>
+<tr><td><code>RoomDatabase</code></td><td>Structured local storage with compile-time verified queries</td></tr>
+<tr><td><code>RecordDao</code></td><td>DAO with status queries, <code>getStatusCounts()</code>, idempotency lookups</td></tr>
+<tr><td><code>RecordRepository</code></td><td>Sync orchestration, state transitions, retry logic</td></tr>
+<tr><td><code>RecordViewModel</code></td><td>UI state, validation, mock mode selection, survives rotation</td></tr>
+<tr><td><code>MockApiService</code></td><td>Controlled test scenarios: Normal, Unavailable, Lost Response, Conflict</td></tr>
+<tr><td><code>SyncStatus</code> enum</td><td>Explicit states: SAVED, PENDING, ACKNOWLEDGED, FAILED, CONFLICT</td></tr>
+<tr><td><code>clientId</code> (UUID)</td><td>Idempotency key — same operation = same clientId</td></tr></table>
+
+<h2>2 &middot; How the App Works</h2>
+<p>The app follows an <b>offline-first</b> architecture. Every record is saved locally first, then synced when the user chooses. The sync state machine makes every transition visible and auditable.</p>
+<div class="flow"><span class="chip">Open app</span><span class="arr">&rarr;</span><span class="chip">Fill form</span><span class="arr">&rarr;</span><span class="chip">Save → SAVED</span><span class="arr">&rarr;</span><span class="chip">Tap Sync</span><span class="arr">&rarr;</span><span class="chip">PENDING</span></div>
+<div class="flow"><span class="chip ok">Server OK</span><span class="arr">&rarr;</span><span class="chip ok">ACKNOWLEDGED</span><span class="arr">&or;</span><span class="chip bad">Transient fail</span><span class="arr">&rarr;</span><span class="chip bad">FAILED (retry)</span></div>
+<div class="flow"><span class="chip bad">Permanent fail</span><span class="arr">&rarr;</span><span class="chip bad">CONFLICT (resolve)</span><span class="arr">&or;</span><span class="chip">Lost response</span><span class="arr">&rarr;</span><span class="chip">Retry with same clientId</span></div>
+<h3>Project Structure</h3>
+<div class="tree">app/
+├─ src/main/java/.../MainActivity.java           ← UI wiring, mock mode buttons
+├─ src/main/java/.../viewmodel/RecordViewModel.java ← Form, sync, UI state
+├─ src/main/java/.../repository/RecordRepository.java ← Sync logic, state machine
+├─ src/main/java/.../data/AppDatabase.java       ← Room database + DAO
+├─ src/main/java/.../data/RecordDao.java         ← Queries + status counts
+├─ src/main/java/.../model/Record.java           ← Entity + SyncStatus enum
+├─ src/main/java/.../model/RecordValidator.java  ← Validation logic
+├─ src/main/java/.../api/MockApiService.java     ← Controlled test scenarios
+└─ src/main/res/layout/activity_main.xml         ← Material3 UI</div>
+
+<h2>3 &middot; Data Model & Sync States</h2>
+<h3>3.1 Record Entity (Record.java)</h3>
+<p>The <code>Record</code> entity captures everything needed for offline-first sync:</p>
+<figure class="code"><figcaption>model/Record.java <b>&middot; fields</b></figcaption><pre><span class="l"><i class="k">@Entity</i>(tableName = <i class="s">"records"</i>)</span>
+<span class="l"><i class="k">public class</i> <i class="t">Record</i> {</span>
+<span class="l">    <i class="k">@PrimaryKey</i>(autoGenerate = <i class="k">true</i>)</span>
+<span class="l">    <i class="k">public long</i> id = 0;</span>
+<span class="l"></span>
+<span class="l">    <i class="c">// Idempotency key - same operation = same clientId</i></span>
+<span class="l">    <i class="k">public String</i> clientId;</span>
+<span class="l"></span>
+<span class="l">    <i class="k">public String</i> title;</span>
+<span class="l">    <i class="k">public String</i> description = <i class="s">""</i>;</span>
+<span class="l">    <i class="k">public double</i> quantity = 0.0;</span>
+<span class="l">    <i class="k">public String</i> unit = <i class="s">"pcs"</i>;</span>
+<span class="l"></span>
+<span class="l">    <i class="k">public</i> <i class="t">SyncStatus</i> status = <i class="t">SyncStatus</i>.SAVED;</span>
+<span class="l"></span>
+<span class="l">    <i class="k">public long</i> createdAt = <i class="t">System</i>.currentTimeMillis();</span>
+<span class="l">    <i class="k">public long</i> updatedAt = <i class="t">System</i>.currentTimeMillis();</span>
+<span class="l">    <i class="k">public Long</i> syncedAt = <i class="k">null</i>;</span>
+<span class="l">    <i class="k">public String</i> serverId = <i class="k">null</i>;</span>
+<span class="l">    <i class="k">public int</i> retryCount = 0;</span>
+<span class="l">    <i class="k">public String</i> lastError = <i class="k">null</i>;</span>
+<span class="l">}</span>
+</pre></figure>
+<div class="note tip"><p>&#128161; <b>Key design.</b> <code>clientId</code> is generated once on creation (<code>UUID.randomUUID()</code>) and <b>never changes</b>. This is the idempotency key — if the server receives the same <code>clientId</code> twice, it treats it as a duplicate and returns the original result.</p></div>
+
+<h3>3.2 Sync Status Enum (SyncStatus.java)</h3>
+<p>Explicit states eliminate ambiguity. The UI shows color-coded chips for each status.</p>
+<figure class="code"><figcaption>model/SyncStatus.java</figcaption><pre><span class="l"><i class="k">public enum</i> <i class="t">SyncStatus</i> {</span>
+<span class="l">    SAVED(<i class="s">"Saved locally"</i>),</span>
+<span class="l">    PENDING(<i class="s">"Syncing..."</i>),</span>
+<span class="l">    ACKNOWLEDGED(<i class="s">"Synced"</i>),</span>
+<span class="l">    FAILED(<i class="s">"Failed"</i>),</span>
+<span class="l">    CONFLICT(<i class="s">"Conflict"</i>);</span>
+<span class="l"></span>
+<span class="l">    <i class="k">private final String</i> displayName;</span>
+<span class="l">    <i class="c">// constructor + getDisplayName()</i></span>
+<span class="l">}</span>
+</pre></figure>
+<div class="grid" style="margin-top:12px">
+<div class="card"><span class="status-chip status-saved">SAVED</span><span>Local only, not yet synced</span></div>
+<div class="card"><span class="status-chip status-pending">PENDING</span><span>Sync in progress</span></div>
+<div class="card"><span class="status-chip status-acked">ACKNOWLEDGED</span><span>Server confirmed</span></div>
+<div class="card"><span class="status-chip status-failed">FAILED</span><span>Transient error — retry safe</span></div>
+<div class="card"><span class="status-chip status-conflict">CONFLICT</span><span>Permanent — needs resolution</span></div>
+</div>
+
+<h2>4 &middot; Local Persistence with Room</h2>
+<h3>4.1 Database & DAO (AppDatabase.java, RecordDao.java)</h3>
+<p>Room provides compile-time verified SQL, reactive <code>LiveData</code>, and transactions.</p>
+<figure class="code"><figcaption>data/AppDatabase.java <b>&middot; schema justification</b></figcaption><pre><span class="l"><i class="c">/**
+ * Design justification for Room/SQLite over SharedPreferences or Files:
+ *
+ * 1. STRUCTURED DATA: Records have multiple typed fields
+ *    - Preferences only supports primitive key-value pairs
+ *    - Files require manual serialization/parsing
+ *
+ * 2. QUERY CAPABILITIES: Need to query by status, clientId, date ranges
+ *    - Room provides compile-time verified SQL queries
+ *    - LiveData/Flow for reactive UI updates
+ *
+ * 3. TRANSACTION SUPPORT: Atomic operations for sync state transitions
+ *    - Critical for "no false success" guarantee
+ *    - Preferences has no transaction support
+ *
+ * 4. MIGRATION PATH: Schema evolution as app grows
+ *    - Room handles migrations safely
+ */</i></span>
+<span class="l"><i class="k">@Database</i>(entities = {<i class="t">Record</i>.class}, version = 1, exportSchema = <i class="k">false</i>)</span>
+<span class="l"><i class="k">@TypeConverters</i>(<i class="t">AppDatabase</i>.<i class="t">Converters</i>.class)</span>
+<span class="l"><i class="k">public abstract class</i> <i class="t">AppDatabase</i> <i class="k">extends</i> <i class="t">RoomDatabase</i> {</span>
+<span class="l">    <i class="k">public abstract</i> <i class="t">RecordDao</i> recordDao();</span>
+<span class="l">}</span>
+</pre></figure>
+
+<h3>4.2 Key DAO Queries (RecordDao.java)</h3>
+<figure class="code"><figcaption>data/RecordDao.java <b>&middot; essential queries</b></figcaption><pre><span class="l"><i class="k">@Dao</i></span>
+<span class="l"><i class="k">public interface</i> <i class="t">RecordDao</i> {</span>
+<span class="l">    <i class="k">@Insert</i></span>
+<span class="l">    <i class="k">long</i> insert(<i class="t">Record</i> record);</span>
+<span class="l"></span>
+<span class="l">    <i class="k">@Update</i></span>
+<span class="l">    <i class="k">int</i> update(<i class="t">Record</i> record);</span>
+<span class="l"></span>
+<span class="l">    <i class="k">@Query</i>(<i class="s">"SELECT * FROM records ORDER BY createdAt DESC"</i>)</span>
+<span class="l">    <i class="t">LiveData</i><<i class="t">List</i><<i class="t">Record</i>>> getAllLiveData();</span>
+<span class="l"></span>
+<span class="l">    <i class="k">@Query</i>(<i class="s">"SELECT * FROM records WHERE clientId = :clientId"</i>)</span>
+<span class="l">    <i class="t">Record</i> getByClientId(<i class="k">String</i> clientId);</span>
+<span class="l"></span>
+<span class="l">    <i class="k">@Query</i>(<i class="s">"SELECT status, COUNT(*) as count FROM records GROUP BY status"</i>)</span>
+<span class="l">    <i class="t">LiveData</i><<i class="t">List</i><<i class="t">StatusCount</i>>> getStatusCounts();</span>
+<span class="l"></span>
+<span class="l">    <i class="k">public static class</i> <i class="t">StatusCount</i> {</span>
+<span class="l">        <i class="k">public</i> <i class="t">SyncStatus</i> status;</span>
+<span class="l">        <i class="k">public int</i> count;</span>
+<span class="l">    }</span>
+<span class="l">}</span>
+</pre></figure>
+<div class="note warn"><p>&#9888; <b>Transaction boundary.</b> The DAO methods run inside transactions when called from <code>RecordRepository</code>. If validation fails, an exception is thrown <b>before</b> any database write — no false success.</p></div>
+
+<h2>5 &middot; Validation — No False Success</h2>
+<h3>5.1 Validator (RecordValidator.java)</h3>
+<p>Validation happens <b>before</b> any database operation. Returns a sealed result type — either <code>Valid</code> with the record or <code>Invalid</code> with a map of field errors.</p>
+<figure class="code"><figcaption>model/RecordValidator.java</figcaption><pre><span class="l"><i class="k">public sealed class</i> <i class="t">ValidationResult</i> <i class="k">permits</i> <i class="t">ValidationResult</i>.<i class="t">Valid</i>, <i class="t">ValidationResult</i>.<i class="t">Invalid</i> {</span>
+<span class="l">    <i class="k">public static final class</i> <i class="t">Valid</i> <i class="k">extends</i> <i class="t">ValidationResult</i> {</span>
+<span class="l">        <i class="k">public final</i> <i class="t">Record</i> record;</span>
+<span class="l">        <i class="k">public</i> Valid(<i class="t">Record</i> record) { <i class="k">this</i>.record = record; }</span>
+<span class="l">    }</span>
+<span class="l">    <i class="k">public static final class</i> <i class="t">Invalid</i> <i class="k">extends</i> <i class="t">ValidationResult</i> {</span>
+<span class="l">        <i class="k">public final</i> <i class="t">Map</i><<i class="k">String</i>, <i class="k">String</i>> errors;</span>
+<span class="l">        <i class="k">public</i> Invalid(<i class="t">Map</i><<i class="k">String</i>, <i class="k">String</i>> errors) { <i class="k">this</i>.errors = errors; }</span>
+<span class="l">    }</span>
+<span class="l">}</span>
+<span class="l"></span>
+<span class="l"><i class="k">public class</i> <i class="t">RecordValidator</i> {</span>
+<span class="l">    <i class="k">public static</i> <i class="t">ValidationResult</i> validate(<i class="k">String</i> title, <i class="k">String</i> description,</span>
+<span class="l">            <i class="k">double</i> quantity, <i class="k">String</i> unit) {</span>
+<span class="l">        <i class="t">Map</i><<i class="k">String</i>, <i class="k">String</i>> errors = <i class="k">new</i> <i class="t">HashMap</i><>();</span>
+<span class="l">        <i class="k">if</i> (title == <i class="k">null</i> || title.trim().isEmpty())</span>
+<span class="l">            errors.put(<i class="s">"title"</i>, <i class="s">"Title is required"</i>);</span>
+<span class="l">        <i class="k">else if</i> (title.length() > 100)</span>
+<span class="l">            errors.put(<i class="s">"title"</i>, <i class="s">"Title max 100 characters"</i>);</span>
+<span class="l">        <i class="k">if</i> (quantity <= 0)</span>
+<span class="l">            errors.put(<i class="s">"quantity"</i>, <i class="s">"Quantity must be positive"</i>);</span>
+<span class="l">        <i class="k">if</i> (unit == <i class="k">null</i> || unit.trim().isEmpty())</span>
+<span class="l">            errors.put(<i class="s">"unit"</i>, <i class="s">"Unit is required"</i>);</span>
+<span class="l">        <i class="k">return</i> errors.isEmpty()</span>
+<span class="l">                ? <i class="k">new</i> <i class="t">Valid</i>(<i class="t">Record</i>.create(title, description, quantity, unit))</span>
+<span class="l">                : <i class="k">new</i> <i class="t">Invalid</i>(errors);</span>
+<span class="l">    }</span>
+<span class="l">}</span>
+</pre></figure>
+
+<h2>6 &middot; Sync State Machine & Repository</h2>
+<h3>6.1 State Transitions</h3>
+<p>The repository orchestrates the sync lifecycle. Every transition is explicit and auditable.</p>
+<figure class="code"><figcaption>repository/RecordRepository.java <b>&middot; syncRecord()</b></figcaption><pre><span class="l"><i class="k">public</i> <i class="t">SyncResult</i> syncRecord(<i class="t">Record</i> record) {</span>
+<span class="l">    <i class="c">// 1. Transition to PENDING</i></span>
+<span class="l">    <i class="t">Record</i> pendingRecord = record.copyWith(</span>
+<span class="l">            <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="t">SyncStatus</i>.PENDING,</span>
+<span class="l">            <i class="k">null</i>, <i class="t">System</i>.currentTimeMillis(), <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>);</span>
+<span class="l">    dao.update(pendingRecord);</span>
+<span class="l">    _syncState.postValue(<i class="k">new</i> <i class="t">SyncState</i>.<i class="t">InProgress</i>(record.id));</span>
+<span class="l"></span>
+<span class="l">    <i class="k">try</i> {</span>
+<span class="l">        <i class="c">// 2. Call mock API</i></span>
+<span class="l">        <i class="t">MockApiService</i>.<i class="t">SyncResult</i> apiResult = <i class="t">MockApiService</i>.syncRecord(pendingRecord);</span>
+<span class="l"></span>
+<span class="l">        <i class="c">// 3a. SUCCESS → ACKNOWLEDGED</i></span>
+<span class="l">        <i class="t">Record</i> acknowledgedRecord = pendingRecord.copyWith(</span>
+<span class="l">                <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="t">SyncStatus</i>.ACKNOWLEDGED,</span>
+<span class="l">                <i class="k">null</i>, <i class="t">System</i>.currentTimeMillis(), <i class="t">System</i>.currentTimeMillis(),</span>
+<span class="l">                apiResult.serverId, 0, <i class="k">null</i>);</span>
+<span class="l">        dao.update(acknowledgedRecord);</span>
+<span class="l">        _syncState.postValue(<i class="k">new</i> <i class="t">SyncState</i>.<i class="t">Success</i>(acknowledgedRecord));</span>
+<span class="l">        <i class="k">return new</i> <i class="t">SyncResult</i>.<i class="t">Success</i>(acknowledgedRecord, apiResult.message);</span>
+<span class="l">    } <i class="k">catch</i> (<i class="t">Exception</i> e) {</span>
+<span class="l">        <i class="c">// 3b. FAILURE → FAILED (transient) or CONFLICT (permanent)</i></span>
+<span class="l">        <i class="k">boolean</i> isTransient = <i class="t">MockApiService</i>.isTransient(e);</span>
+<span class="l">        <i class="k">int</i> newRetryCount = pendingRecord.retryCount + 1;</span>
+<span class="l">        <i class="t">Record</i> failedRecord = pendingRecord.copyWith(</span>
+<span class="l">                <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>, <i class="k">null</i>,</span>
+<span class="l">                isTransient ? <i class="t">SyncStatus</i>.FAILED : <i class="t">SyncStatus</i>.CONFLICT,</span>
+<span class="l">                <i class="k">null</i>, <i class="t">System</i>.currentTimeMillis(), <i class="k">null</i>, <i class="k">null</i>, newRetryCount, e.getMessage());</span>
+<span class="l">        dao.update(failedRecord);</span>
+<span class="l">        _syncState.postValue(<i class="k">new</i> <i class="t">SyncState</i>.<i class="t">Failure</i>(failedRecord, e.getMessage(), isTransient));</span>
+<span class="l">        <i class="k">return</i> isTransient</span>
+<span class="l">                ? <i class="k">new</i> <i class="t">SyncResult</i>.<i class="t">TransientFailure</i>(failedRecord, e.getMessage(), newRetryCount)</span>
+<span class="l">                : <i class="k">new</i> <i class="t">SyncResult</i>.<i class="t">PermanentFailure</i>(failedRecord, e.getMessage());</span>
+<span class="l">    }</span>
+<span class="l">}</span>
+</pre></figure>
+
+<h3>6.2 Idempotent Retry (retrySync)</h3>
+<p>Critical: <b>the same <code>clientId</code> is used on retry</b>. This prevents duplicate records if the original request actually succeeded but the response was lost.</p>
+<figure class="code"><figcaption>repository/RecordRepository.java <b>&middot; retrySync()</b></figcaption><pre><span class="l"><i class="c">/**
+ * Retry a failed record sync.
+ * Uses the SAME clientId for idempotency - critical for preventing duplicates.
+ */</i></span>
+<span class="l"><i class="k">public</i> <i class="t">SyncResult</i> retrySync(<i class="t">Record</i> record) {</span>
+<span class="l">    <i class="k">if</i> (record.status != <i class="t">SyncStatus</i>.FAILED && record.status != <i class="t">SyncStatus</i>.SAVED) {</span>
+<span class="l">        <i class="k">throw new</i> <i class="t">IllegalStateException</i>(<i class="s">"Can only retry FAILED or SAVED records"</i>);</span>
+<span class="l">    }</span>
+<span class="l">    <i class="c">// Same clientId passed through copyWith → idempotent</i></span>
+<span class="l">    <i class="k">return</i> syncRecord(record);</span>
+<span class="l">}</span>
+</pre></figure>
+<div class="note tip"><p>&#128161; <b>Lost response scenario.</b> If the network times out but the server <b>did</b> process the request, the retry sends the same <code>clientId</code>. The mock server (and a real idempotent API) recognizes it and returns the original success — no duplicate created.</p></div>
+
+<h2>7 &middot; Mock API — Controlled Test Scenarios</h2>
+<h3>7.1 Mock Modes (MockApiService.java)</h3>
+<p>The mock service simulates four distinct server behaviors for testing:</p>
+<div class="grid">
+<div class="card"><span class="ic">&#9989;</span><b>NORMAL</b><span>Returns success with generated serverId</span></div>
+<div class="card"><span class="ic">&#128683;</span><b>UNAVAILABLE</b><span>Throws IOException (transient) — safe to retry</span></div>
+<div class="card"><span class="ic">&#9200;</span><b>LOST_RESPONSE</b><span>First call: throws timeout. Second call with same clientId: returns original success</span></div>
+<div class="card"><span class="ic">&#9888;</span><b>CONFLICT</b><span>Throws 409 Conflict (permanent) — NOT safe to retry blindly</span></div>
+</div>
+<figure class="code"><figcaption>api/MockApiService.java <b>&middot; lost response logic</b></figcaption><pre><span class="l"><i class="c">// Simulates: request sent → timeout → retry with same clientId → success</i></span>
+<span class="l"><i class="k">static final</i> <i class="t">Map</i><<i class="k">String</i>, <i class="t">SyncResult</i>> processedRequests = <i class="k">new</i> <i class="t">ConcurrentHashMap</i><>();</span>
+<span class="l"></span>
+<span class="l"><i class="k">public static</i> <i class="t">SyncResult</i> syncRecord(<i class="t">Record</i> record) <i class="k">throws</i> <i class="t">Exception</i> {</span>
+<span class="l">    <i class="k">switch</i> (mockMode) {</span>
+<span class="l">        <i class="k">case</i> LOST_RESPONSE:</span>
+<span class="l">            <i class="c">// Check if we already processed this clientId</i></span>
+<span class="l">            <i class="t">SyncResult</i> existing = processedRequests.get(record.clientId);</span>
+<span class="l">            <i class="k">if</i> (existing != <i class="k">null</i>) {</span>
+<span class="l">                <i class="c">// Idempotent retry — return original result</i></span>
+<span class="l">                <i class="k">return</i> existing;</span>
+<span class="l">            }</span>
+<span class="l">            <i class="c">// First attempt — simulate timeout</i></span>
+<span class="l">            <i class="k">throw new</i> <i class="t">SocketTimeoutException</i>(<i class="s">"Request timeout"</i>);</span>
+<span class="l">        <i class="k">case</i> CONFLICT:</span>
+<span class="l">            <i class="k">throw new</i> <i class="t">HttpException</i>(<i class="s">"409 Conflict: Record already exists with different data"</i>);</span>
+<span class="l">        <i class="c">// ... NORMAL and UNAVAILABLE cases</i></span>
+<span class="l">    }</span>
+<span class="l">}</span>
+</pre></figure>
+
+<h2>8 &middot; ViewModel — UI State & Validation</h2>
+<h3>8.1 Form Handling (RecordViewModel.java)</h3>
+<p>The ViewModel validates input, calls the repository on a background thread, and exposes UI state via <code>LiveData</code>.</p>
+<figure class="code"><figcaption>viewmodel/RecordViewModel.java <b>&middot; createRecord()</b></figcaption><pre><span class="l"><i class="k">public void</i> createRecord(<i class="k">final String</i> title, <i class="k">final String</i> description,</span>
+<span class="l">        <i class="k">final String</i> quantityStr, <i class="k">final String</i> unit) {</span>
+<span class="l">    postValue(_formError, <i class="k">null</i>);</span>
+<span class="l">    postValue(_fieldErrors, <i class="k">null</i>);</span>
+<span class="l"></span>
+<span class="l">    <i class="k">double</i> qty = 0.0;</span>
+<span class="l">    <i class="k">try</i> { qty = <i class="t">Double</i>.parseDouble(quantityStr); } <i class="k">catch</i> (<i class="t">NumberFormatException</i> ignored) {}</span>
+<span class="l"></span>
+<span class="l">    ioExecutor.execute(() -> {</span>
+<span class="l">        <i class="k">try</i> {</span>
+<span class="l">            <i class="k">final</i> <i class="t">Record</i> record = repository.createRecord(title, description, finalQty, unit);</span>
+<span class="l">            postValue(_lastActionMessage, <i class="s">"Record saved locally (ID: "</i> + record.id + <i class="s">", ClientID: "</i> + record.clientId.substring(0, 8) + <i class="s">"...)"</i>);</span>
+<span class="l">        } <i class="k">catch</i> (<i class="t">ValidationException</i> e) {</span>
+<span class="l">            postValue(_fieldErrors, e.errors); <i class="c">// Field-level errors</i></span>
+<span class="l">            postValue(_formError, <i class="s">"Please fix the highlighted fields"</i>);</span>
+<span class="l">        } <i class="k">catch</i> (<i class="t">Exception</i> e) {</span>
+<span class="l">            postValue(_formError, <i class="s">"Save failed: "</i> + e.getMessage());</span>
+<span class="l">        }</span>
+<span class="l">    });</span>
+<span class="l">}</span>
+</pre></figure>
+
+<h3>8.2 Mock Mode Selection</h3>
+<p>The UI provides buttons to switch mock modes — enabling testing of all sync scenarios without a real backend.</p>
+<figure class="code"><figcaption>MainActivity.java <b>&middot; mock mode buttons</b></figcaption><pre><span class="l">binding.btnModeNormal.setOnClickListener(v -> viewModel.setMockMode(MockApiService.MockMode.NORMAL));</span>
+<span class="l">binding.btnModeUnavailable.setOnClickListener(v -> viewModel.setMockMode(MockApiService.MockMode.UNAVAILABLE));</span>
+<span class="l">binding.btnModeLostResponse.setOnClickListener(v -> viewModel.setMockMode(MockApiService.MockMode.LOST_RESPONSE));</span>
+<span class="l">binding.btnModeConflict.setOnClickListener(v -> viewModel.setMockMode(MockApiService.MockMode.CONFLICT));</span>
+<span class="l">binding.btnResetMock.setOnClickListener(v -> viewModel.resetMockServer());</span>
+</pre></figure>
+
+<h2>9 &middot; User Interface (activity_main.xml)</h2>
+<h3>9.1 Layout Structure</h3>
+<p>Material3 components: <code>CoordinatorLayout</code> → <code>AppBarLayout</code> → <code>NestedScrollView</code> → cards for Form, Mock Mode, Records List, Status Summary.</p>
+<figure class="code"><figcaption>res/layout/activity_main.xml <b>&middot; form card</b></figcaption><pre><span class="l"><i class="c"><!-- Form Section --></i></span>
+<span class="l"><i class="k"><com.google.android.material.card.MaterialCardView</i></span>
+<span class="l">    android:layout_width=<i class="s">"match_parent"</i></span>
+<span class="l">    android:layout_height=<i class="s">"wrap_content"</i></span>
+<span class="l">    android:layout_marginBottom=<i class="s">"16dp"</i></span>
+<span class="l">    app:cardElevation=<i class="s">"2dp"</i></span>
+<span class="l">    app:cardCornerRadius=<i class="s">"12dp"</i>></span>
+<span class="l"></span>
+<span class="l">    <i class="k"><LinearLayout</i></span>
+<span class="l">        android:orientation=<i class="s">"vertical"</i></span>
+<span class="l">        android:padding=<i class="s">"16dp"</i>></span>
+<span class="l"></span>
+<span class="l">        <i class="k"><TextView</i> android:text=<i class="s">"Create Record"</i></span>
+<span class="l">            android:textAppearance=<i class="s">"?attr/textAppearanceHeadlineSmall"</i> /></span>
+<span class="l"></span>
+<span class="l">        <i class="c"><!-- Title field with TextInputLayout --></i></span>
+<span class="l">        <i class="k"><com.google.android.material.textfield.TextInputLayout</i></span>
+<span class="l">            android:id=<i class="s">"@+id/tilTitle"</i></span>
+<span class="l">            style=<i class="s">"@style/Widget.Material3.TextInputLayout.OutlinedBox"</i>></span>
+<span class="l">            <i class="k"><com.google.android.material.textfield.TextInputEditText</i></span>
+<span class="l">                android:id=<i class="s">"@+id/etTitle"</i></span>
+<span class="l">                android:hint=<i class="s">"Title *"</i></span>
+<span class="l">                android:inputType=<i class="s">"textCapWords"</i></span>
+<span class="l">                android:maxLength=<i class="s">"100"</i> /></span>
+<span class="l">        <i class="k"></com.google.android.material.textfield.TextInputLayout></i></span>
+<span class="l"></span>
+<span class="l">        <i class="c"><!-- Quantity + Unit row --></i></span>
+<span class="l">        <i class="k"><LinearLayout</i> android:orientation=<i class="s">"horizontal"</i>></span>
+<span class="l">            <i class="k"><TextInputLayout</i> android:id=<i class="s">"@+id/tilQuantity"</i></span>
+<span class="l">                android:layout_width=<i class="s">"0dp"</i> android:layout_weight=<i class="s">"1"</i>></span>
+<span class="l">                <i class="k"><TextInputEditText</i> android:id=<i class="s">"@+id/etQuantity"</i></span>
+<span class="l">                    android:hint=<i class="s">"Quantity *"</i> android:inputType=<i class="s">"numberDecimal"</i> /></span>
+<span class="l">            <i class="k"></TextInputLayout></i></span>
+<span class="l">            <i class="k"><TextInputLayout</i> android:id=<i class="s">"@+id/tilUnit"</i></span>
+<span class="l">                style=<i class="s">"@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"</i>></span>
+<span class="l">                <i class="k"><AutoCompleteTextView</i> android:id=<i class="s">"@+id/actvUnit"</i></span>
+<span class="l">                    android:hint=<i class="s">"Unit *"</i> android:inputType=<i class="s">"none"</i> /></span>
+<span class="l">            <i class="k"></TextInputLayout></i></span>
+<span class="l">        <i class="k"></LinearLayout></i></span>
+<span class="l"></span>
+<span class="l">        <i class="k"><MaterialButton</i> android:id=<i class="s">"@+id/btnSave"</i></span>
+<span class="l">            android:text=<i class="s">"Save Record"</i> app:icon=<i class="s">"@android:drawable/ic_menu_save"</i> /></span>
+<span class="l"></span>
+<span class="l">        <i class="k"><TextView</i> android:id=<i class="s">"@+id/tvFormError"</i></span>
+<span class="l">            android:textColor=<i class="s">"#d32f2f"</i> android:visibility=<i class="s">"gone"</i> /></span>
+<span class="l">    <i class="k"></LinearLayout></i></span>
+<span class="l"><i class="k"></com.google.android.material.card.MaterialCardView></i></span>
+</pre></figure>
+
+<h3>9.2 Record Item Layout (item_record.xml)</h3>
+<p>Each record shows title, quantity+unit, status chip, and action buttons (Sync, Retry, Edit, Delete).</p>
+<div class="note"><p><b>Actions per status:</b> SAVED/FAILED → Sync/Retry | ACKNOWLEDGED → Edit (resets to SAVED) / Delete (force) | CONFLICT → Edit to resolve / Delete</p></div>
+
+<h2>10 &middot; Testing Scenarios — Step by Step</h2>
+
+<div class="step">
+<div class="no">1</div>
+<div>
+<h3>Create records in NORMAL mode</h3>
+<p>Select <b>Normal - Success</b>, fill the form, tap <b>Save Record</b>. Records appear with <span class="status-chip status-saved">SAVED</span> status. Tap <b>Sync All Pending</b> → all become <span class="status-chip status-acked">ACKNOWLEDGED</span> with server IDs.</p>
+<div class="screenshot-zone" id="sc1">
+<input type="file" id="file1" accept="image/*" onchange="previewImage(this, 'preview1')">
+<label for="file1">Upload Screenshot: Create & Sync in Normal Mode</label>
+<div class="preview" id="preview1"></div>
+<p class="placeholder">Drag & drop or click to upload a screenshot of the app showing SAVED → ACKNOWLEDGED</p>
+</div>
+</div>
+</div>
+
+<div class="step">
+<div class="no">2</div>
+<div>
+<h3>Service Unavailable (transient failure)</h3>
+<p>Select <b>Service Unavailable</b>, create a record, tap <b>Sync</b>. Record goes <span class="status-chip status-pending">PENDING</span> → <span class="status-chip status-failed">FAILED</span>. Error snackbar shows <i>Transient (retry safe)</i>. Tap <b>Retry</b> on the record → succeeds.</p>
+<div class="screenshot-zone" id="sc2">
+<input type="file" id="file2" accept="image/*" onchange="previewImage(this, 'preview2')">
+<label for="file2">Upload Screenshot: Transient Failure & Retry</label>
+<div class="preview" id="preview2"></div>
+<p class="placeholder">Drag & drop or click to upload a screenshot showing FAILED → Retry → ACKNOWLEDGED</p>
+</div>
+</div>
+</div>
+
+<div class="step">
+<div class="no">3</div>
+<div>
+<h3>Lost Response (idempotency demo)</h3>
+<p>Select <b>Lost Response (Timeout)</b>, create a record, tap <b>Sync</b>. First attempt times out → <span class="status-chip status-failed">FAILED</span>. Tap <b>Retry</b> → <b>same clientId</b> sent → mock server returns original success → <span class="status-chip status-acked">ACKNOWLEDGED</span>. <b>No duplicate created.</b></p>
+<div class="screenshot-zone" id="sc3">
+<input type="file" id="file3" accept="image/*" onchange="previewImage(this, 'preview3')">
+<label for="file3">Upload Screenshot: Lost Response Recovery</label>
+<div class="preview" id="preview3"></div>
+<p class="placeholder">Drag & drop or click to upload a screenshot showing timeout → retry with same ClientID → success</p>
+</div>
+</div>
+</div>
+
+<div class="step">
+<div class="no">4</div>
+<div>
+<h3>Conflict (permanent failure)</h3>
+<p>Select <b>Conflict</b>, create a record, tap <b>Sync</b>. Record goes <span class="status-chip status-pending">PENDING</span> → <span class="status-chip status-conflict">CONFLICT</span>. Error snackbar shows <i>Permanent (needs resolution)</i>. Retry button is disabled — you must <b>Edit</b> the record (change data) then sync, or delete.</p>
+<div class="screenshot-zone" id="sc4">
+<input type="file" id="file4" accept="image/*" onchange="previewImage(this, 'preview4')">
+<label for="file4">Upload Screenshot: Conflict Resolution</label>
+<div class="preview" id="preview4"></div>
+<p class="placeholder">Drag & drop or click to upload a screenshot showing CONFLICT → Edit → Resolve</p>
+</div>
+</div>
+</div>
+
+<div class="step">
+<div class="no">5</div>
+<div>
+<h3>Process death survival</h3>
+<p>Create records, sync some, then <b>Force Stop</b> the app (Settings → Apps → Force Stop). Reopen app — all records persist with correct statuses. Room survives process death; ViewModel does not (that's expected).</p>
+<div class="screenshot-zone" id="sc5">
+<input type="file" id="file5" accept="image/*" onchange="previewImage(this, 'preview5')">
+<label for="file5">Upload Screenshot: After Force Stop / Reopen</label>
+<div class="preview" id="preview5"></div>
+<p class="placeholder">Drag & drop or click to upload a screenshot showing data persistence after app restart</p>
+</div>
+</div>
+</div>
+
+<div class="step">
+<div class="no">6</div>
+<div>
+<h3>Status Summary chips</h3>
+<p>The bottom card shows real-time counts per status via <code>RecordDao.getStatusCounts()</code> observed as <code>LiveData</code>. Verify counts match the list.</p>
+<div class="screenshot-zone" id="sc6">
+<input type="file" id="file6" accept="image/*" onchange="previewImage(this, 'preview6')">
+<label for="file6">Upload Screenshot: Status Summary</label>
+<div class="preview" id="preview6"></div>
+<p class="placeholder">Drag & drop or click to upload a screenshot of the status chips</p>
+</div>
+</div>
+</div>
+
+<h2>11 &middot; Key Concepts Summary</h2>
+<table><tr><th>Concept</th><th>Implementation</th><th>Why It Matters</th></tr>
+<tr><td>Offline-first</td><td>Save to Room first, sync later</td><td>Works without network; no data loss</td></tr>
+<tr><td>Explicit sync states</td><td>SAVED/PENDING/ACKNOWLEDGED/FAILED/CONFLICT</td><td>UI always reflects truth; no hidden states</td></tr>
+<tr><td>Idempotent retry</td><td>Fixed <code>clientId</code> per record</td><td>Prevents duplicates on lost response</td></tr>
+<tr><td>Transient vs permanent</td><td><code>MockApiService.isTransient()</code></td><td>Safe retry vs. needs human resolution</td></tr>
+<tr><td>Transaction boundary</td><td>Validate → throw → no DB write</td><td>No false success on validation error</td></tr>
+<tr><td>Reactive UI</td><td>LiveData from DAO queries</td><td>Auto-updates on any data change</td></tr>
+<tr><td>Testable sync logic</td><td>MockApiService with 4 modes</td><td>CI/CD can verify all scenarios</td></tr></table>
+
+<h2>12 &middot; Screenshots Gallery</h2>
+<p>Upload screenshots for each testing scenario above. They will appear inline in the steps and here as a gallery.</p>
+
+<div class="screenshot-zone" id="gallery">
+<input type="file" id="galleryFiles" accept="image/*" multiple onchange="previewGallery(this)">
+<label for="galleryFiles">Upload Additional Screenshots (multiple)</label>
+<div class="preview" id="galleryPreview"></div>
+<p class="placeholder">Drag & drop or click to upload any additional screenshots</p>
+</div>
+
+<h2>13 &middot; GitHub Repository</h2>
+<p>Source code: <a href="https://github.com/your-username/persistencerecordsAPIsandofflinerecovery" target="_blank" rel="noopener">https://github.com/your-username/persistencerecordsAPIsandofflinerecovery</a></p>
+<p>Clone and run:</p>
+<figure class="code"><figcaption>Terminal</figcaption><pre><span class="l"><i class="c"># Clone</i></span>
+<span class="l">git clone https://github.com/your-username/persistencerecordsAPIsandofflinerecovery.git</span>
+<span class="l"></span>
+<span class="l"><i class="c"># Open in Android Studio</i></span>
+<span class="l">cd persistencerecordsAPIsandofflinerecovery</span>
+<span class="l"><i class="c"># Build & run on emulator/device</i></span>
+</pre></figure>
+
+<script>
+function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    const zone = input.closest('.screenshot-zone');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" alt="Screenshot">';
+            zone.classList.remove('hover');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function previewGallery(input) {
+    const preview = document.getElementById('galleryPreview');
+    preview.innerHTML = '';
+    if (input.files) {
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.alt = file.name;
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+// Drag and drop support
+document.querySelectorAll('.screenshot-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('hover'); });
+    zone.addEventListener('dragleave', e => { zone.classList.remove('hover'); });
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('hover');
+        const input = zone.querySelector('input[type="file"]');
+        if (input && e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            const event = new Event('change', { bubbles: true });
+            input.dispatchEvent(event);
+        }
+    });
+    zone.addEventListener('click', e => {
+        if (e.target === zone || e.target.classList.contains('placeholder')) {
+            zone.querySelector('input[type="file"]').click();
+        }
+    });
+});
+</script>
+</main></body></html>
